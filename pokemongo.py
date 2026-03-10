@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import random
+#import csv
 
 app = FastAPI()
 
@@ -61,13 +63,79 @@ p48 = pokemones(id=48, name="venonat", life=100, attack=13, type="bug")
 p49 = pokemones(id=49, name="venomoth", life=100, attack=14, type="bug")
 p50 = pokemones(id=104, name="cubone", life=100, attack=17, type="ground")
 
+"""#Carga los pokemones desde el CSV en vez de tenerlos hardcodeados
+lista_pok: list[pokemones] = []
+with open("pokemones.csv", newline="") as archivo:
+    lector = csv.DictReader(archivo)       # lee cada fila como un diccionario
+    for fila in lector:                    # fila = {"id":"1", "name":"bulbasaur", ...}
+        pokemon = pokemones(
+            id=int(fila["id"]),            # csv todo es texto, int() lo convierte a número
+            name=fila["name"],
+            attack=int(fila["attack"]),
+            life=int(fila["life"]),
+            type=fila["type"]
+        )
+        lista_pok.append(pokemon)          # agrega cada pokemon a la lista"""
 
-lista_pok: list[pokemones] = [p1, p2, p3, p4, p5, p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,p26,p27,p28,p29,p30,p31,p32,p33,p34,p35,p36,p37,p38,p39,p40,p41,p42,p43,p44,p45,p46,p47,p48,p49,p50]
+lista_pok: list[pokemones] = [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,
+                               p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,p26,p27,p28,
+                               p29,p30,p31,p32,p33,p34,p35,p36,p37,p38,p39,p40,p41,
+                               p42,p43,p44,p45,p46,p47,p48,p49,p50]
 
 @app.get("/showallpokemon/")
 def all_pokemon():
     return lista_pok
 
 
+# Busca un pokemon por ID de forma aleatoria en la lista
+@app.get("/onepokemon/")
+def show_one_pokemon(pos: int):
+    lista_random = lista_pok.copy()
+    random.shuffle(lista_random)
+    for pokemon in lista_random:
+        if pokemon.id == pos:
+            return pokemon
+    return {"mensaje": "pokemon no encontrado"}
 
-   
+
+# Ordena los pokemones por ataque (de mayor a menor)
+@app.get("/pokemonorderedby/")
+def pokemon_ordered_by_attack():
+    return sorted(lista_pok, key=lambda p: p.attack, reverse=True)
+#ordenar lista_pok mirando el attack de cada pokemon, de mayor a menor
+
+# Batalla entre dos pokemones
+def leave_pokeball(pokemon_id: int):
+    for pokemon in lista_pok:
+        if pokemon.id == pokemon_id:
+            return pokemon
+    return None
+
+def attack(p1: pokemones, p2: pokemones):
+    life_p1 = p1.life
+    life_p2 = p2.life
+    round_num = 1
+
+    while life_p1 > 0 and life_p2 > 0:
+        life_p2 -= p1.attack
+        if life_p2 <= 0:
+            break
+        life_p1 -= p2.attack
+        round_num += 1
+
+    winner = p1.name if life_p2 <= 0 else p2.name
+    return {"rounds": round_num, "winner": winner, "resultado": f"{winner} wins!"}
+
+@app.get("/pokemobattle/")
+def pokemon_battle(id1: int, id2: int):
+    p1 = leave_pokeball(id1)
+    p2 = leave_pokeball(id2)
+
+    if not p1 or not p2:
+        return {"mensaje": "uno o ambos pokemones no encontrados"}
+
+    return {
+        "pokemon_1": p1.name,
+        "pokemon_2": p2.name,
+        "batalla": attack(p1, p2)
+    }
